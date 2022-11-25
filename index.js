@@ -25,7 +25,26 @@ const uri = process.env.DB_URL
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 const run = async () => {
+    const usersCollection = client.db("TheArtisticResalesDB").collection("artisticUserDB")
+    try {
+        app.post('/users', async (req, res) => {
+            const user = req.body
+            console.log(user)
+            const storedUser = await usersCollection.findOne(user)
+            if (storedUser) {
+                console.log(storedUser);
+                return res.send({ acknowledged: true })
+            }
+            const result = await usersCollection.insertOne(user)
+            // console.log(result);
+            res.send(result)
 
+        })
+
+    }
+    finally {
+
+    }
 
 }
 
