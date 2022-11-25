@@ -21,22 +21,60 @@ app.get('/', (req, res) => {
 
 
 const uri = process.env.DB_URL
-// console.log(uri)
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+const verifyJwt = (req, res, next) => {
+    const authHeader = req.headers.authorization
+
+    if (!authHeader) {
+        return res.status(401).send("Unauthorized Access")
+    }
+
+    const token = authHeader.split(" ")[1]
+
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(403).send("Forbidden Access")
+        }
+        req.decoded = decoded
+    });
+
+    next()
+}
+
 
 const run = async () => {
     const usersCollection = client.db("TheArtisticResalesDB").collection("artisticUserDB")
+
+    const verifyAdmin = async (req, res, next) => {
+        const decodedEmail = req.decoded.email
+        const query = { email: decodedEmail }
+        const user = await usersCollection.findOne(query)
+        if (user?.role !== "Admin") {
+            return res.status(403).send("Forbidden Access")
+        }
+        next()
+    }
+
+    const verifySeller = async (req, res, next) => {
+        const decodedEmail = req.decoded.email
+        const query = { email, decodedEmail }
+        const user = await usersCollection.findOne(query)
+        if (user?.role !== "Seller") {
+            return res.status(403).send("Forbidden Access")
+        }
+        next()
+    }
+
+
     try {
         app.post('/users', async (req, res) => {
             const user = req.body
-            // console.log(user)
             const storedUser = await usersCollection.findOne(user)
             if (storedUser) {
-                // console.log(storedUser);
                 return res.send({ acknowledged: true })
             }
             const result = await usersCollection.insertOne(user)
-            // console.log(result);
             res.send(result)
         })
 
@@ -50,6 +88,13 @@ const run = async () => {
             }
             return res.status(403).send({ accessToken: "" })
         })
+        app.get('/users', verifyJwt, verifyAdmin, async (req, res) => {
+            const role = req.query.role
+            const query = { role: role }
+            const result = await usersCollection.find(query).toArray()
+            res.send(result)
+        })
+
 
     }
     finally {
