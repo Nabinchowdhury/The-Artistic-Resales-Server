@@ -145,6 +145,18 @@ const run = async () => {
             res.send(result)
         })
 
+        app.get('/categories', async (req, res) => {
+            const query = {}
+            const allProducts = await productsCollection.find().toArray()
+            let categories = []
+            allProducts.map(product => {
+                if (categories.indexOf(product.category) === -1) {
+                    categories.push(product.category)
+                }
+            })
+            res.send(categories)
+        })
+
 
     }
     finally {
