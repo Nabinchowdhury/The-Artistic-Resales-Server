@@ -45,6 +45,7 @@ const verifyJwt = (req, res, next) => {
 
 const run = async () => {
     const usersCollection = client.db("TheArtisticResalesDB").collection("artisticUserDB")
+    const productsCollection = client.db("TheArtisticResalesDB").collection("artisticProductsDB")
 
     const verifyAdmin = async (req, res, next) => {
         const decodedEmail = req.decoded.email
@@ -93,6 +94,7 @@ const run = async () => {
             const email = req.params.email
             const query = { email: email }
             const user = await usersCollection.findOne(query)
+
             res.send({ role: user?.role })
         })
 
@@ -106,6 +108,19 @@ const run = async () => {
             const id = req.params.id
             const query = { _id: ObjectId(id) }
             const result = await usersCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        app.post('/products', async (req, res) => {
+            const productDetails = req.body
+            const email = productDetails.sellerEmail
+            const userQuery = { email: email, isVerified: true }
+            const isVerifiedUser = await usersCollection.findOne(userQuery)
+            if (isVerifiedUser) {
+                productDetails.isVerified = isVerifiedUser.isVerified
+            }
+            // console.log(productDetails, email)
+            const result = await productsCollection.insertOne(productDetails)
             res.send(result)
         })
 
