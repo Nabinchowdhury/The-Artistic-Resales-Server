@@ -59,7 +59,7 @@ const run = async () => {
 
     const verifySeller = async (req, res, next) => {
         const decodedEmail = req.decoded.email
-        const query = { email, decodedEmail }
+        const query = { email: decodedEmail }
         const user = await usersCollection.findOne(query)
         if (user?.role !== "Seller") {
             return res.status(403).send("Forbidden Access")
@@ -111,7 +111,7 @@ const run = async () => {
             res.send(result)
         })
 
-        app.post('/products', async (req, res) => {
+        app.post('/products', verifyJwt, verifySeller, async (req, res) => {
             const productDetails = req.body
             const email = productDetails.sellerEmail
             const userQuery = { email: email, isVerified: true }
@@ -119,8 +119,29 @@ const run = async () => {
             if (isVerifiedUser) {
                 productDetails.isVerified = isVerifiedUser.isVerified
             }
-            // console.log(productDetails, email)
             const result = await productsCollection.insertOne(productDetails)
+            res.send(result)
+        })
+
+        app.get("/products", verifyJwt, verifySeller, async (req, res) => {
+            const email = req.query.email
+            const decodedEmail = req.decoded.email
+
+            if (email === decodedEmail) {
+                const query = {
+                    sellerEmail: email
+                }
+                console.log(query)
+                const products = await productsCollection.find(query).toArray()
+                console.log(products);
+                res.send(products)
+            }
+        })
+
+        app.delete("/products/:id", verifyJwt, verifySeller, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: ObjectId(id) }
+            const result = await productsCollection.deleteOne(query)
             res.send(result)
         })
 
