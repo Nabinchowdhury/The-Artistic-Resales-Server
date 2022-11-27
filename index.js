@@ -245,6 +245,14 @@ const run = async () => {
             res.send(categoryProducts);
         })
 
+        app.get("/advertisement", async (req, res) => {
+            const query = {
+                status: "Available"
+            }
+            const result = await advertiseMentCollection.find(query).toArray()
+            res.send(result);
+        })
+
         app.post("/bookings", verifyJwt, async (req, res) => {
 
             const bookingDetails = req.body
