@@ -109,8 +109,27 @@ const run = async () => {
         app.delete('/users/:id', verifyJwt, verifyAdmin, async (req, res) => {
             const id = req.params.id
             const query = { _id: ObjectId(id) }
+            const user = await usersCollection.findOne(query)
+            const userEmail = user.email
+
+            const sellerQuery = {
+                sellerEmail: userEmail
+            }
+            console.log(sellerQuery)
+            const productDeleteResult = await productsCollection.deleteMany(sellerQuery)
+
+            const advertiseMentDeleteResult = await advertiseMentCollection.delete(sellerQuery)
+
+            const buyerQuery = {
+                customerEmail
+                    : userEmail
+            }
+            const bookingDeleteResult = await bookingsCollection.deleteMany(buyerQuery)
+
+
             const result = await usersCollection.deleteOne(query)
             res.send(result)
+
         })
 
         app.post('/products', verifyJwt, verifySeller, async (req, res) => {
@@ -149,8 +168,9 @@ const run = async () => {
                 itemId: id
             }
             const bookingDeleteResult = await bookingsCollection.deleteMany(otherQuery)
+
             const advertiseMentDeleteResult = await advertiseMentCollection.deleteOne(otherQuery)
-            console.log(bookingDeleteResult, advertiseMentDeleteResult);
+
             res.send(result)
         })
 
