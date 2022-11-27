@@ -47,6 +47,7 @@ const run = async () => {
     const usersCollection = client.db("TheArtisticResalesDB").collection("artisticUserDB")
     const productsCollection = client.db("TheArtisticResalesDB").collection("artisticProductsDB")
     const bookingsCollection = client.db("TheArtisticResalesDB").collection("artisticBookingsDB")
+    const advertiseMentCollection = client.db("TheArtisticResalesDB").collection("artisticAdvertiseMentDB")
 
     const verifyAdmin = async (req, res, next) => {
         const decodedEmail = req.decoded.email
@@ -143,6 +144,35 @@ const run = async () => {
             const id = req.params.id
             const query = { _id: ObjectId(id) }
             const result = await productsCollection.deleteOne(query)
+
+
+            res.send(result)
+        })
+
+        app.post("/advertisement/:id", verifyJwt, verifySeller, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: ObjectId(id) }
+            const advertisementDetails = await productsCollection.findOne(query)
+            delete advertisementDetails._id
+            advertisementDetails.itemId = id
+
+            const checkQuery = {
+                itemId: id
+            }
+            const check = await advertiseMentCollection.findOne(checkQuery)
+            if (check) {
+                return res.send({ acknowledged: true })
+            }
+
+            const result = await advertiseMentCollection.insertOne(advertisementDetails)
+
+            const updateIsAdvertised = {
+                $set: {
+                    isAdvertised: true
+                }
+            }
+            const options = { upsert: true }
+            const update = await productsCollection.updateOne(query, updateIsAdvertised, options)
             res.send(result)
         })
 
