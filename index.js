@@ -145,7 +145,12 @@ const run = async () => {
             const query = { _id: ObjectId(id) }
             const result = await productsCollection.deleteOne(query)
 
-
+            const otherQuery = {
+                itemId: id
+            }
+            const bookingDeleteResult = await bookingsCollection.deleteMany(otherQuery)
+            const advertiseMentDeleteResult = await advertiseMentCollection.deleteOne(otherQuery)
+            console.log(bookingDeleteResult, advertiseMentDeleteResult);
             res.send(result)
         })
 
