@@ -48,6 +48,7 @@ const run = async () => {
     const productsCollection = client.db("TheArtisticResalesDB").collection("artisticProductsDB")
     const bookingsCollection = client.db("TheArtisticResalesDB").collection("artisticBookingsDB")
     const advertiseMentCollection = client.db("TheArtisticResalesDB").collection("artisticAdvertiseMentDB")
+    const reportsCollection = client.db("TheArtisticResalesDB").collection("artisticReportsDB")
 
     const verifyAdmin = async (req, res, next) => {
         const decodedEmail = req.decoded.email
@@ -106,19 +107,20 @@ const run = async () => {
             const result = await usersCollection.find(query).toArray()
             res.send(result)
         })
-        app.delete('/users/:id', verifyJwt, verifyAdmin, async (req, res) => {
-            const id = req.params.id
-            const query = { _id: ObjectId(id) }
-            const user = await usersCollection.findOne(query)
-            const userEmail = user.email
+        app.delete('/users/:email', verifyJwt, verifyAdmin, async (req, res) => {
+            const userEmail = req.params.email
+            const query = { email: userEmail }
+
 
             const sellerQuery = {
                 sellerEmail: userEmail
             }
-            console.log(sellerQuery)
+
+            const reportDeleteResult = await reportsCollection.deleteMany(sellerQuery)
+
             const productDeleteResult = await productsCollection.deleteMany(sellerQuery)
 
-            const advertiseMentDeleteResult = await advertiseMentCollection.delete(sellerQuery)
+            const advertiseMentDeleteResult = await advertiseMentCollection.deleteOne(sellerQuery)
 
             const buyerQuery = {
                 customerEmail
@@ -131,6 +133,15 @@ const run = async () => {
             res.send(result)
 
         })
+
+        app.get("/report", verifyJwt, verifyAdmin, async (req, res) => {
+            const query = {}
+            const result = await reportsCollection.find(query).toArray()
+            // console.log(result)
+            res.send(result)
+
+        })
+
 
         app.post('/products', verifyJwt, verifySeller, async (req, res) => {
             const productDetails = req.body
@@ -235,12 +246,12 @@ const run = async () => {
         })
 
         app.post("/bookings", verifyJwt, async (req, res) => {
+
             const bookingDetails = req.body
             // console.log(bookingDetails)
-            const query = {
+            const query =
+            {
                 itemId: bookingDetails.itemId, customerEmail: bookingDetails.customerEmail
-
-
             }
             const check = await bookingsCollection.findOne(query)
             if (check) {
@@ -269,6 +280,24 @@ const run = async () => {
             }
             const orders = await bookingsCollection.find(query).toArray()
             res.send(orders)
+
+        })
+
+        app.post('/report', verifyJwt, async (req, res) => {
+
+            const email = req.decoded.email
+            const reportedItem = req.body
+            reportedItem.reporterEmail = email
+
+            const query = { productId: reportedItem.productId, reporterEmail: reportedItem.reporterEmail }
+
+            const check = await reportsCollection.findOne(query)
+            if (check) {
+                return res.send({ acknowledged: true })
+            }
+
+            const result = await reportsCollection.insertOne(reportedItem)
+            res.send(result)
 
         })
 
