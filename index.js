@@ -46,6 +46,7 @@ const verifyJwt = (req, res, next) => {
 const run = async () => {
     const usersCollection = client.db("TheArtisticResalesDB").collection("artisticUserDB")
     const productsCollection = client.db("TheArtisticResalesDB").collection("artisticProductsDB")
+    const bookingsCollection = client.db("TheArtisticResalesDB").collection("artisticBookingsDB")
 
     const verifyAdmin = async (req, res, next) => {
         const decodedEmail = req.decoded.email
@@ -145,6 +146,20 @@ const run = async () => {
             res.send(result)
         })
 
+        // app.get("/addstatus", async (req, res) => {
+        //     const filter = {}
+        //     const options = { upsert: true }
+        //     const updatePrice = {
+        //         $set: {
+        //             status: "Available"
+        //         }
+        //     }
+        //     const result = await productsCollection.updateMany(filter, updatePrice, options)
+        //     res.send(result)
+        // })
+
+
+
         app.get('/categories', async (req, res) => {
             const query = {}
             const allProducts = await productsCollection.find().toArray()
@@ -156,6 +171,21 @@ const run = async () => {
             })
             res.send(categories)
         })
+
+        app.get("/category/:id", verifyJwt, async (req, res) => {
+            const category = req.params.id
+            const query = { category: category, status: "Available" }
+            const categoryProducts = await productsCollection.find(query).toArray()
+            res.send(categoryProducts);
+        })
+
+        app.post("/bookings", verifyJwt, async (req, res) => {
+            const bookingDetails = req.body
+            // console.log(bookingDetails)
+            const result = await bookingsCollection.insertOne(bookingDetails)
+            res.send(result)
+        })
+
 
 
     }
