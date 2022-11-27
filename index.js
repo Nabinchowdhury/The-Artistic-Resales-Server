@@ -132,9 +132,9 @@ const run = async () => {
                 const query = {
                     sellerEmail: email
                 }
-                console.log(query)
+                // console.log(query)
                 const products = await productsCollection.find(query).toArray()
-                console.log(products);
+                // console.log(products);
                 res.send(products)
             }
         })
@@ -182,8 +182,39 @@ const run = async () => {
         app.post("/bookings", verifyJwt, async (req, res) => {
             const bookingDetails = req.body
             // console.log(bookingDetails)
+            const query = {
+                itemId: bookingDetails.itemId, customerEmail: bookingDetails.customerEmail
+
+
+            }
+            const check = await bookingsCollection.findOne(query)
+            if (check) {
+                return res.send({ acknowledged: true })
+            }
             const result = await bookingsCollection.insertOne(bookingDetails)
             res.send(result)
+        })
+
+        app.get("/isBooked/:id", verifyJwt, async (req, res) => {
+            const email = req.decoded.email
+            const productId = req.params.id
+            // console.log(productId, email);
+            const query = { customerEmail: email, itemId: productId }
+            // console.log(query);
+            const booked = await bookingsCollection.findOne(query)
+            res.send(booked !== null)
+
+        })
+
+
+        app.get("/myOrders", verifyJwt, async (req, res) => {
+            const email = req.decoded.email
+            const query = {
+                customerEmail: email
+            }
+            const orders = await bookingsCollection.find(query).toArray()
+            res.send(orders)
+
         })
 
 
