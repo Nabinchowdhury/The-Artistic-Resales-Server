@@ -3,6 +3,7 @@ const cors = require("cors")
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -49,6 +50,7 @@ const run = async () => {
     const bookingsCollection = client.db("TheArtisticResalesDB").collection("artisticBookingsDB")
     const advertiseMentCollection = client.db("TheArtisticResalesDB").collection("artisticAdvertiseMentDB")
     const reportsCollection = client.db("TheArtisticResalesDB").collection("artisticReportsDB")
+    const paymentCollection = client.db("TheArtisticResalesDB").collection("artisticpaymentDB")
 
     const verifyAdmin = async (req, res, next) => {
         const decodedEmail = req.decoded.email
@@ -134,6 +136,24 @@ const run = async () => {
 
         })
 
+        app.put("/verifyUser/:email", verifyJwt, verifyAdmin, async (req, res) => {
+            const email = req.params.email
+            const userQuery = { email: email }
+            const productQuery = {
+                sellerEmail: email
+            }
+            const options = { upsert: true }
+            const updateVerification = {
+                $set: {
+                    isVerified: true
+                }
+            }
+            const userResult = await usersCollection.updateOne(userQuery, updateVerification, options)
+            const productResult = await productsCollection.updateMany(productQuery, updateVerification, options)
+            // console.log(productResult);
+            res.send(userResult)
+        })
+
         app.get("/report", verifyJwt, verifyAdmin, async (req, res) => {
             const query = {}
             const result = await reportsCollection.find(query).toArray()
@@ -169,6 +189,14 @@ const run = async () => {
                 res.send(products)
             }
         })
+        app.get("/products/:id", verifyJwt, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: ObjectId(id) }
+            const result = await productsCollection.findOne(query)
+
+            res.send(result)
+        })
+
 
         app.delete("/products/:id", verifyJwt, verifySeller, async (req, res) => {
             const id = req.params.id
@@ -272,9 +300,9 @@ const run = async () => {
         app.get("/isBooked/:id", verifyJwt, async (req, res) => {
             const email = req.decoded.email
             const productId = req.params.id
-            // console.log(productId, email);
+
             const query = { customerEmail: email, itemId: productId }
-            // console.log(query);
+
             const booked = await bookingsCollection.findOne(query)
             res.send(booked !== null)
 
@@ -307,6 +335,73 @@ const run = async () => {
             const result = await reportsCollection.insertOne(reportedItem)
             res.send(result)
 
+        })
+
+        app.get('/bookings/:id', verifyJwt, async (req, res) => {
+
+            const id = req.params.id
+
+            const query = { _id: ObjectId(id) }
+            const bookings = await bookingsCollection.findOne(query)
+            res.send(bookings)
+
+        })
+
+        app.post("/create-payment-intent", verifyJwt, async (req, res) => {
+            const booking = req.body
+            const price = booking.price
+
+            const amount = price * 100
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: "usd",
+                amount: amount,
+                "payment_method_types": [
+                    "card"
+                ],
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+
+        })
+
+        app.post('/payment', verifyJwt, async (req, res) => {
+            const payment = req.body
+            const result = await paymentCollection.insertOne(payment)
+
+            const options = { upsert: true }
+
+            const id = payment.bookingId
+            const buyerQuery = { _id: ObjectId(id) }
+            const updateBuyer = {
+                $set: {
+                    isBuyer: true,
+                    transactionId: payment.transactionId,
+                    status: "Sold Out"
+                }
+            }
+            const updatedBooking = await bookingsCollection.updateOne(buyerQuery, updateBuyer, options)
+
+            const itemId = payment.itemId
+            const productQuery = { _id: ObjectId(itemId) }
+
+            const advertiseAndBookingQuery = { itemId: itemId }
+
+            const updateStatus = {
+                $set: {
+                    status: "Sold Out"
+                }
+            }
+
+            const updatedProduct = await productsCollection.updateOne(productQuery, updateStatus, options)
+
+            const updatedadvertisement = await advertiseMentCollection.updateOne(advertiseAndBookingQuery, updateStatus, options)
+
+            const updatedbookings = await bookingsCollection.updateMany(advertiseAndBookingQuery, updateStatus, options)
+
+            res.send(result)
         })
 
 
