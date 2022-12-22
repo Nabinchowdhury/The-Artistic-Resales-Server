@@ -25,6 +25,7 @@ const uri = process.env.DB_URL
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 const verifyJwt = (req, res, next) => {
+    // console.log("hi")
     const authHeader = req.headers.authorization
 
     if (!authHeader) {
@@ -77,7 +78,9 @@ const run = async () => {
         app.post('/users', async (req, res) => {
             const user = req.body
             const storedUser = await usersCollection.findOne(user)
+            // console.log(storedUser);
             if (storedUser) {
+                // console.log("first")
                 return res.send({ acknowledged: true })
             }
             const result = await usersCollection.insertOne(user)
@@ -99,7 +102,7 @@ const run = async () => {
             const email = req.params.email
             const query = { email: email }
             const user = await usersCollection.findOne(query)
-
+            console.log(user)
             res.send({ role: user?.role })
         })
 
@@ -266,10 +269,12 @@ const run = async () => {
             res.send(categories)
         })
 
-        app.get("/category/:id", verifyJwt, async (req, res) => {
+        app.get("/category/:id", async (req, res) => {
             const category = req.params.id
+            console.log(category)
             const query = { category: category, status: "Available" }
             const categoryProducts = await productsCollection.find(query).toArray()
+            // console.log(categoryProducts);
             res.send(categoryProducts);
         })
 
